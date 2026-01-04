@@ -11,11 +11,10 @@ const io = new Server(server);
 // serve static client
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Create a new room id and redirect immediately into it
+// Create a new room id and return as JSON
 app.get('/create', (req, res) => {
   const room = crypto.randomBytes(4).toString('hex'); // 8 hex chars
-  // redirect user into room page
-  res.redirect(`/room/${room}`);
+  res.json({ room });
 });
 
 // Ensure /room/* serves the SPA (index.html)
