@@ -2,17 +2,33 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Mini WebRTC P2P</title>
-  <style>video{width:45%;margin:5px;border:1px solid #ccc}</style>
+  <title>Mini WebRTC P2P — Create Room</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    video { width: 45%; margin: 5px; border: 1px solid #ccc; }
+    #controls { margin-bottom: 12px; }
+    #share { margin-top: 8px; }
+    button { margin-left: 6px; }
+  </style>
 </head>
 <body>
-  <h3>Minimal P2P demo</h3>
-  <input id="room" placeholder="room name" />
-  <button id="join">Join</button>
+  <h3>Minimal P2P demo (with Create Room)</h3>
+
+  <div id="controls">
+    <input id="room" placeholder="room name or id" />
+    <button id="create">Create Room</button>
+    <button id="join">Join</button>
+    <button id="copyLink" style="display:none;">Copy Link</button>
+    <div id="share" style="display:none;">
+      Shareable link: <a id="roomLink" href="#">---</a>
+    </div>
+  </div>
+
   <div>
     <video id="local" autoplay muted playsinline></video>
     <video id="remote" autoplay playsinline></video>
   </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -21,24 +37,84 @@
     });
     const localV = document.getElementById('local');
     const remoteV = document.getElementById('remote');
+    const roomInput = document.getElementById('room');
+    const createBtn = document.getElementById('create');
+    const joinBtn = document.getElementById('join');
+    const shareDiv = document.getElementById('share');
+    const roomLink = document.getElementById('roomLink');
+    const copyBtn = document.getElementById('copyLink');
+
     let localStream;
+    let currentPeerId = null;
 
     pc.ontrack = (e) => {
       remoteV.srcObject = e.streams[0];
     };
     pc.onicecandidate = (e) => {
-      if (e.candidate) {
+      if (e.candidate && currentPeerId) {
         socket.emit('signal', { to: currentPeerId, data: { type: 'candidate', candidate: e.candidate }});
       }
     };
 
-    document.getElementById('join').onclick = async () => {
-      const room = document.getElementById('room').value || 'default';
+    async function startLocal() {
+      if (!localStream) {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localV.srcObject = localStream;
+      }
+    }
+
+    async function joinRoom(room) {
       await startLocal();
       socket.emit('join', room);
+      showShareLink(room);
+      // push URL so others can open the link
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', room);
+      window.history.replaceState({}, '', url);
+    }
+
+    createBtn.onclick = async () => {
+      try {
+        const res = await fetch('/create');
+        const data = await res.json();
+        roomInput.value = data.room;
+        await joinRoom(data.room);
+      } catch (err) {
+        console.error('Create room failed', err);
+      }
     };
 
-    let currentPeerId = null;
+    joinBtn.onclick = async () => {
+      const room = roomInput.value.trim() || 'default';
+      await joinRoom(room);
+    };
+
+    copyBtn.onclick = () => {
+      const link = roomLink.href;
+      navigator.clipboard.writeText(link).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => copyBtn.textContent = 'Copy Link', 1200);
+      });
+    };
+
+    function showShareLink(room) {
+      const link = `${location.origin}${location.pathname}?room=${encodeURIComponent(room)}`;
+      roomLink.href = link;
+      roomLink.textContent = link;
+      shareDiv.style.display = 'block';
+      copyBtn.style.display = 'inline-block';
+    }
+
+    // Auto-join if URL contains ?room=...
+    window.addEventListener('load', () => {
+      const params = new URLSearchParams(window.location.search);
+      const room = params.get('room');
+      if (room) {
+        roomInput.value = room;
+        // small timeout to allow user media prompt to be triggered visibly
+        setTimeout(() => joinRoom(room), 150);
+      }
+    });
 
     socket.on('joined', async ({ room, clients }) => {
       // if there is an existing client, act as caller
@@ -53,8 +129,9 @@
     });
 
     socket.on('peer-joined', (id) => {
-      // a new peer joined; we will wait for their offer or we can initiate depending on strategy
+      // a new peer joined; we'll set them as current peer so offers/answers flow correctly
       console.log('peer joined', id);
+      // Optionally: initiate call if we want new joiner to receive immediately
     });
 
     socket.on('signal', async ({ from, data }) => {
@@ -72,10 +149,13 @@
       }
     });
 
-    async function startLocal() {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localV.srcObject = localStream;
-    }
+    socket.on('peer-left', (id) => {
+      console.log('peer left', id);
+      if (currentPeerId === id) {
+        currentPeerId = null;
+        remoteV.srcObject = null;
+      }
+    });
   </script>
 </body>
 </html>
