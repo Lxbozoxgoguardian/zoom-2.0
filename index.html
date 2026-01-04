@@ -1,15 +1,108 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Video Call</title>
-</head>
-<body style="margin:0;">
+  <title>Call or Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      text-align: center;
+    }
 
+    .menu {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    button {
+      padding: 20px;
+      font-size: 20px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .video { background: #2d8cff; color: white; }
+    .chat  { background: #2ecc71; color: white; }
+
+    iframe {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      display: none;
+    }
+
+    /* Back arrow */
+    .back {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      font-size: 26px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 14px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<!-- BACK BUTTON -->
+<div class="back" id="back" onclick="goBack()">⬅️</div>
+
+<!-- MENU -->
+<div class="menu" id="menu">
+  <h1>Choose</h1>
+  <button class="video" onclick="showVideo()">🎥 Video Call</button>
+  <button class="chat" onclick="showChat()">💬 Text Chat</button>
+</div>
+
+<!-- VIDEO -->
 <iframe
-  src="https://meet.jit.si/MyRoom123"
-  allow="camera; microphone; fullscreen; display-capture"
-  style="width:100vw;height:100vh;border:none;">
+  id="video"
+  src="https://meet.jit.si/jjocf6fyrfrrhfd"
+  allow="camera; microphone; fullscreen; display-capture">
 </iframe>
+
+<!-- CHAT -->
+<iframe
+  id="chat"
+  src="https://tlk.io/fy9wyf78fh9fe9e9gegyeyf7">
+</iframe>
+
+<script>
+function showVideo() {
+  hideAll();
+  document.getElementById("video").style.display = "block";
+  document.getElementById("back").style.display = "block";
+}
+
+function showChat() {
+  hideAll();
+  document.getElementById("chat").style.display = "block";
+  document.getElementById("back").style.display = "block";
+}
+
+function goBack() {
+  hideAll();
+  document.getElementById("menu").style.display = "flex";
+}
+
+function hideAll() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("video").style.display = "none";
+  document.getElementById("chat").style.display = "none";
+  document.getElementById("back").style.display = "none";
+}
+</script>
 
 </body>
 </html>
